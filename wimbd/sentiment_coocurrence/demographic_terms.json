@@ -1,0 +1,44 @@
+{
+    "male_gender_terms": [
+        "he",
+        "him",
+        "his",
+        "himself"
+    ],
+    "female_gender_terms": [
+        "she",
+        "her",
+        "hers",
+        "herself"
+        ],
+    "religious_terms": [
+        "muslim",
+        "christian",
+        "athiest",
+        "buddhist",
+        "hindu",
+        "jew"
+    ],
+    "racial_terms": [
+        "asian",
+        "hispanic",
+        "latino"
+    ],
+    "base_racial_terms": [
+        "white",
+        "black"
+    ],
+    "person_terms": [
+        "person",
+        "man",
+        "woman",
+        "person",
+        "boy",
+        "girl",
+        "child",
+        "children",
+        "people",
+        "men",
+        "women"
+    ]
+}

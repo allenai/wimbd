@@ -1,0 +1,8 @@
+ftfy
+google-cloud-storage
+tqdm
+bettermap
+more_itertools
+
+tensorflow
+protobuf<3.21.0

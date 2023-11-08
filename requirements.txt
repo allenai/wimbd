@@ -1,0 +1,17 @@
+tldextract==3.4.0
+elasticsearch==8.6.2
+matplotlib==3.7.0
+seaborn==0.12.2
+tqdm==4.64.1
+transformers==4.26.1
+pycld2==0.41
+spacytextblob==4.0.0
+spacy==3.5.4
+pandas==2.1.1
+tokenizers==0.13.2
+h5py==3.8.0
+uniseg
+datasets
+wandb
+better_profanity
+smart_open

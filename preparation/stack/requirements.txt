@@ -1,0 +1,7 @@
+pandas
+fsspec
+requests
+aiohttp
+huggingface_hub
+pyarrow
+fastparquet

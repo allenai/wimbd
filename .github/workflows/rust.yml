@@ -1,0 +1,120 @@
+name: Rust
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+    - main
+  push:
+    branches:
+    - main
+
+jobs:
+  checks:
+    name: ${{ matrix.task.name }}
+    runs-on: ${{ matrix.os }}
+    env:
+      RUST_BACKTRACE: full
+      RUSTC_WRAPPER: sccache
+      RUSTV: ${{ matrix.rust }}
+      SCCACHE_CACHE_SIZE: 1G
+      CACHE_PREFIX: v1
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        rust: [stable]
+        task:
+          - name: Test
+            run: cargo test
+
+          - name: Format
+            run: |
+              rustup component add rustfmt
+              cargo fmt -- --check
+
+          - name: Lint
+            run: |
+              rustup component add clippy
+              cargo clippy --all-targets -- -D warnings
+
+          - name: Run top-k
+            run: |
+              cargo run -- topk ./test_fixtures/c4-sample.00000-of-00001.json.gz -n 3 -k 20 --size 50MiB
+
+          - name: Run bottom-k
+            run: |
+              cargo run -- botk ./test_fixtures/c4-sample.00000-of-00001.json.gz -n 3 -k 20 --size 50MiB
+
+          - name: Run count
+            run: |
+              cargo run -- count ./test_fixtures/c4-sample.00000-of-00001.json.gz -s "The"
+
+          - name: Run stats
+            run: |
+              cargo run -- stats ./test_fixtures/c4-sample.00000-of-00001.json.gz
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Prepare environment (ubuntu-latest)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "SCCACHE_DIR=$HOME/.cache/sccache" >> $GITHUB_ENV
+
+      - name: Prepare environment (macos-latest)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "SCCACHE_DIR=$HOME/Library/Caches/Mozilla.sccache" >> $GITHUB_ENV
+
+      - name: Install sccache (ubuntu-latest)
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          LINK: https://github.com/mozilla/sccache/releases/download
+          SCCACHE_VERSION: v0.2.15
+        run: |
+          SCCACHE_FILE=sccache-$SCCACHE_VERSION-x86_64-unknown-linux-musl
+          URL="$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz"
+          echo "Downloading sccache from $URL"
+          mkdir -p $HOME/.local/bin
+          curl -L $URL | tar xz
+          mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
+          chmod +x $HOME/.local/bin/sccache
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install sccache (macos-latest)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # brew update  # takes forever
+          brew install sccache
+
+      - name: Install Rust ${{ matrix.rust }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          profile: minimal
+          override: true
+
+      - name: Cache cargo registry and sccache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ${{ env.SCCACHE_DIR }}
+          key: ${{ env.CACHE_PREFIX }}-${{ runner.os }}-${{ matrix.task.name }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-${{ runner.os }}-${{ matrix.task.name }}-
+
+      - name: Start sccache server
+        run: sccache --start-server
+
+      - name: ${{ matrix.task.name }}
+        run: ${{ matrix.task.run }}
+
+      - name: Stop sccache server
+        run: sccache --stop-server || true
