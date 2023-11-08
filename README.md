@@ -88,6 +88,12 @@ For example, find the top 20 3-grams in some c4 files with:
     --size 16GiB
 ```
 
+## Search
+
+Due to the nature of ElasticSearch, we cannot release the API keys on the web.
+If you are interested in using our ElasticSearch indices, please fill up this [form](https://forms.gle/Mk9uwJibR9H4hh9Y9), and we'll get back to you as soon as we can.
+
+
 ## Issues
 If there's an issue with the code, or you have questions, feel free to [open an issue](https://github.com/allenai/wimbd/issues/new/choose)
 or send a [PR](https://github.com/allenai/wimbd/compare)
