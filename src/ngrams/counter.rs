@@ -40,7 +40,7 @@ impl<'a, T: 'a> AsIterator<'a, T> for std::collections::VecDeque<T> {
     }
 }
 
-/// A counting Bloom filter for ngrams.
+/// A thread-safe counting Bloom filter for ngrams.
 pub struct NgramCounter<A>
 where
     A: Atomic + NumOps,

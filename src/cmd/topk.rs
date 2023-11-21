@@ -189,6 +189,9 @@ where
     // Send work to threads. Each job reads a file, collects ngrams, increments each ngram's global count,
     // and then collects it's own local top-k which it will merge with the global top-k after
     // processing the file.
+    // The fact that each worker uses the current global counts for each ngram to fill its local
+    // top-k ensures that the final top-k will be correct (ignoring hash collisions in Bloom
+    // counter).
     for path in &opt.path {
         // This is our function that collects/counts ngrams from a data line.
         let collect_ngrams = {

@@ -25,6 +25,8 @@ enum WimbdCmd {
     /// Find the top-k ngrams in a dataset of compressed JSON lines files using a counting Bloom
     /// filter.
     ///
+    /// Work is parallelized over files.
+    ///
     /// EXAMPLES
     ///
     /// Find the top 20 3-grams in a file:
@@ -43,19 +45,27 @@ enum WimbdCmd {
     Topk(cmd::topk::Opt),
 
     /// Like 'topk' but for finding the least common ngrams.
+    ///
+    /// Work is parallelized over files.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Botk(cmd::botk::Opt),
 
     /// Get exact counts for given search strings. Note that the search strings will be tokenized
     /// and the search will be done over tokens instead of searching for those substrings directly.
+    ///
+    /// Work is parallelized over files.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Count(cmd::count::Opt),
 
     /// Collect summary statistics about a dataset.
+    ///
+    /// Work is parallelized over files.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Stats(cmd::stats::Opt),
 
     /// Estimate the number of unique ngrams in a dataset using a Bloom filter.
+    ///
+    /// Work is parallelized over files.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Unique(cmd::unique::Opt),
 }
