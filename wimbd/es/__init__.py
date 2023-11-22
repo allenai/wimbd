@@ -47,6 +47,9 @@ def get_indices(
     """
     :param return_mapping: Whether to return mapping along with index information.
     :return: Dictionary of existing indices.
+
+    Note that this function won't work in case you were given an API key from AI2 since these are restrictive.
+    Please refer to the README for the indices mapping.
     """
     es = es or es_init()
 
