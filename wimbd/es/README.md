@@ -21,19 +21,46 @@ print(get_indices())
 print(get_indices(return_mapping=True))
 ```
 
+Note that the `get_indices` function won't work with the access key we provide,
+since it limits the access to the ES index.
+However, you can find the names of the relevant indices below.
+
 At the moment, this will return the following indices:
 ```Python
 {'re_pile': {'docs.count': '211036967'},
  'laion2b-multi-2': {'docs.count': '1133101637'},
  'laion2b-multi-1': {'docs.count': '1133101297'},
- 'test-index': {'docs.count': '1000'},
  'openwebtext': {'docs.count': '8013769'},
- 's2orc-abstracts': {'docs.count': '10101555'},
  're_laion2b-en-1': {'docs.count': '1161075864'},
  're_laion2b-en-2': {'docs.count': '1161076588'},
  'c4': {'docs.count': '1074273501'},
  'laion1b-nolang': {'docs.count': '1271703630'},
  're_oscar': {'docs.count': '431992659'}}
+```
+
+Indices Mapping
+---------------
+```json
+{
+    'mappings': {
+        'dynamic': 'false',
+        'properties': {
+            'date': {
+                'type': 'date'
+            },
+            'subset': {
+                'type': 'keyword', 
+                'ignore_above': 256
+            },
+            'text': {
+                'type': 'text'
+            },
+            'url': {
+                'type': 'text'
+            }
+        }
+    }
+}
 ```
  
 Search over one index
