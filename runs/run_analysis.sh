@@ -22,6 +22,9 @@ done
 
 ./bin/wimbd topk $DATASET -n 100 -k 10000 -j 200 --threshold 1000 --size 200GiB --out $OUT_DIR/top100_$DATA_NAME.jsonl
 
+# Unique n-grmas
+./bin/wimbd unique $DATASET -n 1 -j 200
+
 
 # Bot-k
 ./bin/wimbd botk $DATASET -n 1 -k 10000 -j 200 --size 200GiB --out $OUT_DIR/bot-1_c4.jsonl
