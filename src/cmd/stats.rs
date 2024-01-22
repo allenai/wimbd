@@ -320,7 +320,7 @@ impl Stats<Arc<AtomicUsize>> {
             .max_token_documents
             .lock()
             .map_err(|_| anyhow!("Failed to acquire lock"))?;
-        while let Some(doc_pointer) = (*max_token_documents).get(0) {
+        while let Some(doc_pointer) = (*max_token_documents).front() {
             if doc_pointer.num_tokens < current_max {
                 (*max_token_documents).pop_front();
             } else {
@@ -333,7 +333,7 @@ impl Stats<Arc<AtomicUsize>> {
             .min_token_documents
             .lock()
             .map_err(|_| anyhow!("Failed to acquire lock"))?;
-        while let Some(doc_pointer) = (*min_token_documents).get(0) {
+        while let Some(doc_pointer) = (*min_token_documents).front() {
             if doc_pointer.num_tokens > current_min {
                 (*min_token_documents).pop_front();
             } else {
