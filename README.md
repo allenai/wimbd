@@ -64,22 +64,31 @@ This part of the repository is written in Rust, so first you'll have to [install
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-Then compile the release binary:
+Then you can either install the latest release from [crates.io](https://crates.io/crates/wimbd) directly or install from source.
+To install from `crates.io`, run:
+
+```bash
+cargo install wimbd
+```
+
+Or to install from source, run:
 
 ```bash
 make release DIR=./bin
 ```
 
-And now you can run it:
+(make sure to change `DIR` to a directory of your choice that's on your `PATH`)
+
+And now you should have be able to run the `wimbd` CLI:
 
 ```bash
-./bin/wimbd --help
+wimbd --help
 ```
 
 For example, find the top 20 3-grams in some c4 files with:
 
 ```bash
-./bin/wimbd topk \
+wimbd topk \
     /PATH-TO/c4/en/c4-train.01009-of-01024.json.gz \
     /PATH-TO/c4/en/c4-train.01010-of-01024.json.gz \
     -n 3 \
