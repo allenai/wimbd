@@ -26,7 +26,8 @@ impl PretrainedTokenizer {
             .0
             .encode(text, false)
             .map_err(|err| anyhow!("{}", err))?
-            .into_tokens())
+            .get_tokens()
+            .to_vec())
     }
 
     /// Initialize a new pretrained tokenizer from a path or identifier on HuggingFace.
@@ -38,11 +39,11 @@ impl PretrainedTokenizer {
     }
 
     pub fn decode(&self, tokens: &[String]) -> Result<String> {
-        let ids = tokens
+        let ids: Vec<u32> = tokens
             .iter()
             .filter_map(|t| self.0.token_to_id(t))
             .collect();
-        self.0.decode(ids, true).map_err(|err| anyhow!("{}", err))
+        self.0.decode(&ids, true).map_err(|err| anyhow!("{}", err))
     }
 }
 
