@@ -2,6 +2,11 @@
 name = "wimbd"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/allenai/wimbd"
+homepage = "https://github.com/allenai/wimbd"
+description = "A CLI for inspecting and analyzing large text datasets."
 
 [lib]
 name = "wimbd"
