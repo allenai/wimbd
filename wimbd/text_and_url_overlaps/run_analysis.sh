@@ -1,3 +1,4 @@
+set -Eeuo pipefail
 datasets_json=$1
 intermediate_dir=$2
 mode=$3
