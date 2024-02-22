@@ -33,6 +33,12 @@ def main():
         file1 = os.path.join(sorted_uniq_dir, CONJUNCTION.join(combination[:-1]) + FILE_EXTENSION)
         file2 = os.path.join(sorted_uniq_dir, combination[-1] + FILE_EXTENSION)
         outfile = os.path.join(sorted_uniq_dir, CONJUNCTION.join(combination[:]) + FILE_EXTENSION)
+
+        # if either file is empty, output empty file directly
+        if os.path.getsize(file1) == 0 or os.path.getsize(file2) == 0:
+            os.system(f"touch {outfile}")
+            continue
+        
         print(f"merging: {file1}, {file2}")
         script_dir = os.path.dirname(os.path.realpath(__file__))
         os.system(f"{script_dir}/merge_and_get_overlap.sh {file1} {file2} > {outfile}")
