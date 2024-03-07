@@ -315,7 +315,7 @@ pub(crate) fn parse_size_default_to_gb(src: &str) -> Result<u64, parse_size::Err
     }
 }
 
-pub(crate) fn expand_dirs(paths: &Vec<PathBuf>) -> Result<Vec<PathBuf>> {
+pub(crate) fn expand_dirs(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
     let mut files = vec![];
     for path in paths {
         if path.is_dir() {
