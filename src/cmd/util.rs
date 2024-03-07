@@ -322,8 +322,13 @@ pub(crate) fn expand_dirs(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
             let path_str = path
                 .to_str()
                 .ok_or_else(|| anyhow!("invalid path '{}'", path.to_string_lossy()))?;
-            for entry in glob(&format!("{}/**/*.json.gz", path_str))? {
+            let mut num_hits = 0;
+            for entry in glob(&format!("{}/**/*.json*.gz", path_str))? {
                 files.push(entry?.to_path_buf());
+                num_hits += 1;
+            }
+            if num_hits == 0 {
+                bail!("No JSON Gz files found in '{}'", path_str);
             }
         } else {
             files.push(path.clone());
