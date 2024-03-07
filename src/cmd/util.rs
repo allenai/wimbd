@@ -112,7 +112,7 @@ pub(crate) struct DataExecutor {
 
 impl DataExecutor {
     pub(crate) fn new(
-        paths: &Vec<PathBuf>,
+        paths: &[PathBuf],
         max_workers: Option<usize>,
         limit: Option<usize>,
         description: &'static str,
