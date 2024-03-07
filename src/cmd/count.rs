@@ -11,7 +11,7 @@ use console::style;
 use serde_json::json;
 use structopt::StructOpt;
 
-use super::util::{DataExecutor, DataInstance};
+use super::util::{expand_dirs, DataExecutor, DataInstance};
 use crate::tokens::{tokenize, PretrainedTokenizer};
 use crate::util;
 
@@ -64,6 +64,8 @@ pub(crate) struct Opt {
 }
 
 pub(crate) fn main(mut opt: Opt) -> Result<()> {
+    opt.path = expand_dirs(&opt.path)?;
+
     if opt.search.is_empty() {
         bail!("At least one -s/--search term is required");
     }

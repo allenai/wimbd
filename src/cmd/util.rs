@@ -4,7 +4,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
+use glob::glob;
 use humantime::format_duration;
 use parse_size::parse_size;
 use serde::Deserialize;
@@ -111,7 +112,7 @@ pub(crate) struct DataExecutor {
 
 impl DataExecutor {
     pub(crate) fn new(
-        paths: &Vec<PathBuf>,
+        paths: &[PathBuf],
         max_workers: Option<usize>,
         limit: Option<usize>,
         description: &'static str,
@@ -312,4 +313,22 @@ pub(crate) fn parse_size_default_to_gb(src: &str) -> Result<u64, parse_size::Err
     } else {
         parse_size(format!("{src}GiB"))
     }
+}
+
+pub(crate) fn expand_dirs(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
+    let mut files = vec![];
+    for path in paths {
+        if path.is_dir() {
+            let path_str = path
+                .to_str()
+                .ok_or_else(|| anyhow!("invalid path '{}'", path.to_string_lossy()))?;
+            for entry in glob(&format!("{}/**/*.json.gz", path_str))? {
+                files.push(entry?.to_path_buf());
+            }
+        } else {
+            files.push(path.clone());
+        }
+    }
+
+    Ok(files)
 }

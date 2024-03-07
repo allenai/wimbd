@@ -38,6 +38,7 @@ thousands = "0.2"
 humantime = "2.1"
 tokenizers = { version = "0.15.1", features = ["http"] }
 rand = "0.8"
+glob = "0.3.1"
 
 [features]
 default = ["build-binary"]
