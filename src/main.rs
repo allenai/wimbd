@@ -37,6 +37,9 @@ enum WimbdCmd {
     ///
     /// > wimbd topk c4-train.01011-of-01024.json.gz --ngram=3 --topk=20 --seed=42 --size=50GiB
     ///
+    /// You can also pass directories instead of files, in which case files will be found by
+    /// globbing for '**/*.json.gz' within each directory.
+    ///
     /// ACCURACY
     ///
     /// In general you should set '--size' to however many free gigabytes of RAM you have available, minus some buffer room.

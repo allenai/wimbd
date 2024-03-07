@@ -11,7 +11,7 @@ use serde::Serialize;
 use structopt::StructOpt;
 use thousands::Separable;
 
-use super::util::{DataExecutor, DataInstance};
+use super::util::{expand_dirs, DataExecutor, DataInstance};
 use crate::tokens::{tokenize, PretrainedTokenizer};
 use crate::util;
 
@@ -59,6 +59,8 @@ pub(crate) struct Opt {
 }
 
 pub(crate) fn main(mut opt: Opt) -> Result<()> {
+    opt.path = expand_dirs(&opt.path)?;
+
     if opt.path.is_empty() {
         bail!("at least one path is required");
     }

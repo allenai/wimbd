@@ -15,7 +15,7 @@ use rand::{random, rngs::StdRng, seq::SliceRandom, SeedableRng};
 use serde_json::json;
 use structopt::StructOpt;
 
-use super::util::{parse_size_default_to_gb, DataExecutor, DataInstance};
+use super::util::{expand_dirs, parse_size_default_to_gb, DataExecutor, DataInstance};
 use crate::ngrams::{NgramCounter, TopKNgrams};
 use crate::tokens::{tokenize, PretrainedTokenizer};
 use crate::util;
@@ -101,6 +101,8 @@ pub(crate) struct Opt {
 }
 
 pub(crate) fn main(mut opt: Opt) -> Result<()> {
+    opt.path = expand_dirs(&opt.path)?;
+
     // Validate arguments.
     if opt.path.is_empty() {
         bail!("at least one path is required");
