@@ -56,9 +56,17 @@ enum WimbdCmd {
     /// Get exact counts for given search strings. Note that the search strings will be tokenized
     /// and the search will be done over tokens instead of searching for those substrings directly.
     ///
+    /// If you want to count occurrences of a regex pattern instead, use the 'search' command.
+    ///
     /// Work is parallelized over files.
     #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
     Count(cmd::count::Opt),
+
+    /// Get exact counts for matches of given regex patterns.
+    ///
+    /// Work is parallelized over files.
+    #[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
+    Search(cmd::search::Opt),
 
     /// Collect summary statistics about a dataset.
     ///
@@ -80,6 +88,7 @@ fn main() -> Result<()> {
     let result = match opt.cmd {
         WimbdCmd::Topk(opt) => cmd::topk::main(opt),
         WimbdCmd::Count(opt) => cmd::count::main(opt),
+        WimbdCmd::Search(opt) => cmd::search::main(opt),
         WimbdCmd::Stats(opt) => cmd::stats::main(opt),
         WimbdCmd::Botk(opt) => cmd::botk::main(opt),
         WimbdCmd::Unique(opt) => cmd::unique::main(opt),

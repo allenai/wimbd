@@ -39,6 +39,7 @@ humantime = "2.1"
 tokenizers = { version = "0.15.1", features = ["http"] }
 rand = "0.8"
 glob = "0.3.1"
+regex = "1.10.3"
 
 [features]
 default = ["build-binary"]
