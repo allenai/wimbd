@@ -38,6 +38,13 @@ At the moment, this will return the following indices:
  're_oscar': {'docs.count': '431992659'}}
 ```
 
+Different Indices
+-----------------
+We have 3 different indices that we can make publicly available. Each contain different corpora:
+* The Pile, OpenWebText, C4 and Oscar (`re_pile`, `openwebtext`, `c4`, and `re_oscar`)
+* RedPajamav1 (`redpajama-split`)
+* Dolma (`docs_v1.5_2023-11-02`)
+
 Indices Mapping
 ---------------
 ```json
