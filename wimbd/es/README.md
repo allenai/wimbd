@@ -4,6 +4,11 @@ Useful functions wrapping around Elasticsearch
 Connect to the server with a read-only account
 ----------------------------------------------
 
+### Get access to the indices
+* Dolma index: https://forms.gle/gQN4nP4HHYGwXAis9
+* Other indices: https://forms.gle/yMz7uTFhd1dKNYTk7
+
+
 ```Python
 from wimbd.es import es_init
 es = es_init()
