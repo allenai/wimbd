@@ -40,6 +40,10 @@ tokenizers = { version = "0.15.1", features = ["http"] }
 rand = "0.8"
 glob = "0.3.1"
 regex = "1.10.3"
+aws-config = "1.1.8"
+aws-sdk-s3 = "1.19.1"
+tokio = { version = "1.36.0", features = ["full"] }
+async-compression = {version ="0.4.6", features=["all"]}
 
 [features]
 default = ["build-binary"]

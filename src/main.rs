@@ -2,6 +2,7 @@ use anyhow::Result;
 use structopt::StructOpt;
 
 mod cmd;
+pub mod s3;
 pub mod io;
 pub mod ngrams;
 pub mod progress;
