@@ -7,6 +7,7 @@ use aws_config::BehaviorVersion;
 use aws_sdk_s3::{Client};
 use aws_sdk_s3::operation::get_object::GetObjectOutput;
 use async_compression::tokio::bufread::GzipDecoder as asyncGZ;
+use async_compression::tokio::bufread::ZstdDecoder as asyncZstd;
 use std::io::{BufReader, Cursor};
 use rand::{Rng};
 use tokio::io::AsyncReadExt;
@@ -65,7 +66,7 @@ pub(crate) fn split_s3_path<P: AsRef<Path>>(path: P) -> (String, String) {
 ============================================================*/
 
 pub(crate) async fn get_s3_client() -> Client {
-	// Gets a client from default configs (setup with awscli)
+    // Gets a client from default configs (setup with awscli)
     let region_provider = RegionProviderChain::default_provider();
     let config = aws_config::defaults(BehaviorVersion::latest())
         .region(region_provider)
@@ -76,7 +77,7 @@ pub(crate) async fn get_s3_client() -> Client {
 
 
 pub(crate) async fn expand_s3_dir(s3_uri: &PathBuf) -> Result<Vec<PathBuf>> {
-	// Collects all .json.gz/.jsonl.gz files prefixed by the provided s3_uri 
+    // Collects all .json.gz/.jsonl.gz files prefixed by the provided s3_uri 
     let mut s3_files: Vec<PathBuf> = Vec::new();
     let client = get_s3_client().await;
     let (bucket, prefix) = split_s3_path(s3_uri);
@@ -93,7 +94,7 @@ pub(crate) async fn expand_s3_dir(s3_uri: &PathBuf) -> Result<Vec<PathBuf>> {
             Ok(output) => {
                 for object in output.contents() {
                     let key = object.key().unwrap();
-                    if !(key.ends_with(".jsonl.gz") || key.ends_with(".json.gz")) {
+                    if !(key.ends_with(".jsonl.gz") || key.ends_with(".json.gz") || key.ends_with(".jsonl.zstd")) {
                         continue;
                     }
                     let mut s3_file = PathBuf::from("s3://");
@@ -113,7 +114,7 @@ pub(crate) async fn expand_s3_dir(s3_uri: &PathBuf) -> Result<Vec<PathBuf>> {
 
 
 pub(crate) async fn get_object_with_retry(bucket: &str, key: &str, num_retries: Option<usize>) -> Result<GetObjectOutput, aws_sdk_s3::Error> {
-	// Wrapper for get_object with some random retries
+    // Wrapper for get_object with some random retries
     let mut attempts = 0;
     let num_retries = num_retries.unwrap_or(5); // 3 retries by default
     let base_delay = Duration::from_millis(100);
@@ -148,14 +149,22 @@ pub(crate) async fn get_object_with_retry(bucket: &str, key: &str, num_retries: 
 
 pub(crate) async fn get_reader_from_s3<P: AsRef<Path>>(path: P, num_retries: Option<usize>) -> Result<BufReader<Cursor<Vec<u8>>>>{
     // Gets all the data from an S3 file and loads it into memory and returns a Bufreader over it
-    let (s3_bucket, s3_key) = split_s3_path(path);
+    let (s3_bucket, s3_key) = split_s3_path(&path);
     let object = get_object_with_retry(&s3_bucket, &s3_key, num_retries).await?;
     let body_stream = object.body.into_async_read();
-    let gz = asyncGZ::new(body_stream);
-    let mut reader = tBufReader::with_capacity(1024 * 1024, gz);
-
     let mut data = Vec::new();
-    reader.read_to_end(&mut data).await.expect("Failed to read data {:path}");
+
+    if path.as_ref().extension().unwrap() == "zstd" {
+        let zstd = asyncZstd::new(body_stream);
+        let mut reader = tBufReader::with_capacity(1024 * 1024, zstd);
+        reader.read_to_end(&mut data).await.expect("Failed to read data {:path}");
+
+    } else {
+        let gz = asyncGZ::new(body_stream);
+        let mut reader = tBufReader::with_capacity(1024 * 1024, gz);
+        reader.read_to_end(&mut data).await.expect("Failed to read data {:path}");        
+    };
+
     let cursor = Cursor::new(data);
 
     Ok(BufReader::new(cursor))
