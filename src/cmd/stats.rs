@@ -60,6 +60,7 @@ pub(crate) struct Opt {
 
 pub(crate) fn main(mut opt: Opt) -> Result<()> {
     opt.path = expand_dirs(&opt.path)?;
+
     if opt.path.is_empty() {
         bail!("at least one path is required");
     }
@@ -132,6 +133,7 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
                 Ok(())
             }
         };
+
         let local_stats_factory = {
             let stats = stats.clone();
             move || -> Result<LocalStats> {
@@ -142,6 +144,7 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
                 })
             }
         };
+
         let tokenizer = tokenizer.clone();
         executor.execute_with_callback(
             path,
@@ -151,6 +154,7 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
                   local_stats: &mut LocalStats|
                   -> Result<()> {
                 local_stats.total_documents += 1;
+
                 if let Some(text) = data.text {
                     let mut num_tokens = 0;
 
