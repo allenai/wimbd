@@ -12,14 +12,14 @@ use serde::Deserialize;
 use thousands::Separable;
 use threadpool::ThreadPool;
 
-use tokio; 
+use tokio;
 
 use crate::io::GzBufReader;
-use crate::s3::{is_s3, expand_s3_dir};
 use crate::progress::{
     get_file_progress_bar, get_multi_progress_bar, get_progress_bar, MultiProgress, ProgressBar,
     ProgressIterator,
 };
+use crate::s3::{expand_s3_dir, is_s3};
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct DataInstance {
@@ -33,7 +33,7 @@ pub(crate) fn process_file<F, C, U, G>(
     context: C,
     mut callback: G,
     progress: Option<ProgressBar>,
-    path: impl AsRef<Path>,
+    path: impl AsRef<Path> + std::fmt::Debug,
     limit: Option<usize>,
     early_exit: Arc<AtomicBool>,
 ) -> Result<(usize, usize)>
@@ -48,7 +48,7 @@ where
     // Plan: check if path is s3:// and if local use below
     let reader = GzBufReader::open(&path)?;
 
-    // Otherwise I need to implement a GzBufReader that has {iterable, take, progress_with}, 
+    // Otherwise I need to implement a GzBufReader that has {iterable, take, progress_with},
     let mut context = context()?;
 
     let mut process_line = |line: &str| -> Result<()> {
@@ -187,7 +187,7 @@ impl DataExecutor {
         C: Fn() -> Result<U> + Send + 'static + Clone,
         G: FnMut(U) -> Result<()> + Send + 'static + Clone,
     {
-        if !path.is_file() && !is_s3(path){
+        if !path.is_file() && !is_s3(path) {
             self.early_exit.store(true, Ordering::Relaxed);
             bail!("File {:?} does not exist", path);
         }
@@ -322,9 +322,6 @@ pub(crate) fn parse_size_default_to_gb(src: &str) -> Result<u64, parse_size::Err
     }
 }
 
-
-
-
 pub(crate) fn expand_dirs(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
     let mut files: Vec<PathBuf> = Vec::new();
     let runtime = tokio::runtime::Runtime::new().unwrap();
@@ -333,11 +330,15 @@ pub(crate) fn expand_dirs(paths: &[PathBuf]) -> Result<Vec<PathBuf>> {
         if is_s3(path) {
             // Use async_std to block until we scour the s3 directory for files
             runtime.block_on(async {
-                let s3_paths = expand_s3_dir(path).await.unwrap();
-                files.extend(s3_paths);                
-            });                
-        }
-        else if path.is_dir() {
+                match expand_s3_dir(path).await {
+                    Ok(s3_paths) => {
+                        files.extend(s3_paths);
+                        Ok(())
+                    }
+                    Err(e) => Err(e),
+                }
+            })?;
+        } else if path.is_dir() {
             let path_str = path
                 .to_str()
                 .ok_or_else(|| anyhow!("invalid path '{}'", path.to_string_lossy()))?;

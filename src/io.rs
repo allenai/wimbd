@@ -1,17 +1,17 @@
 //! IO helpers.
 
+use anyhow::Result;
+use flate2::read::MultiGzDecoder;
 use std::io::Cursor;
 use std::{
     fs::File,
     io::{self, prelude::*},
     rc::Rc,
 };
-use anyhow::Result;
-use flate2::read::MultiGzDecoder;
 use zstd::stream::read::Decoder as ZstdDecoder;
 
+use crate::s3::{get_reader_from_s3, is_s3};
 use tokio;
-use crate::s3::{is_s3, get_reader_from_s3};
 
 trait ReadLine: BufRead {}
 
@@ -53,8 +53,6 @@ impl BufRead for GzReader {
     }
 }
 
-
-
 pub struct GzBufReader {
     reader: GzReader,
     buf: Rc<String>,
@@ -63,9 +61,8 @@ fn new_buf() -> Rc<String> {
     Rc::new(String::with_capacity(2048))
 }
 
-
 impl GzBufReader {
-    pub fn open(path: impl AsRef<std::path::Path>) -> Result<Self> {
+    pub fn open(path: impl AsRef<std::path::Path> + std::fmt::Debug) -> Result<Self> {
         let buf = new_buf();
         //println!("MAKING READER {:?} {:?}", path.as_ref(),  );
         let reader = if is_s3(path.as_ref()) {
@@ -73,11 +70,10 @@ impl GzBufReader {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .unwrap();   
+                .unwrap();
             let result = rt.block_on(get_reader_from_s3(path, None));
             GzReader::Memory(result.unwrap())
-        }  else if path.as_ref().extension().unwrap() == "zstd" {
-
+        } else if path.as_ref().extension().unwrap() == "zstd" {
             let decoder = ZstdDecoder::new(File::open(path)?)?;
             //decoder.aonsetuhs();
             //let reader = io::BufReader::new(decoder);
