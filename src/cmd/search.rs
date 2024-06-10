@@ -32,6 +32,10 @@ pub(crate) struct Opt {
     #[structopt(long = "--with-locations")]
     with_locations: bool,
 
+    /// Limit the number of match locations collected by pattern. Only relevant when using '--with-locations'.
+    #[structopt(long = "--locations-limit")]
+    locations_limit: Option<usize>,
+
     /// Limit the number of JSON lines per file to process.
     #[structopt(short = "l", long = "limit")]
     limit: Option<usize>,
@@ -81,6 +85,9 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
     }
     if opt.path.is_empty() {
         bail!("at least one path is required");
+    }
+    if opt.locations_limit.is_some() && !opt.with_locations {
+        bail!("--locations-limit is only valid when using --with-locations");
     }
 
     let mut counts: HashMap<String, Arc<AtomicUsize>, RandomState> =
@@ -172,15 +179,24 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
                   -> Result<()> {
                 if let Some(text) = data.text {
                     for (pattern, regex) in &patterns {
+                        let mut collect_matches = local_match_locations.is_some();
                         let mut submatches: Option<Vec<SubMatch>> = None;
-                        if let Some(_) = local_match_locations {
+                        if collect_matches {
                             submatches = Some(Vec::new());
                         }
 
                         for m in regex.find_iter(&text) {
-                            counts.get(pattern).unwrap().fetch_add(1, Ordering::Relaxed);
-                            if let Some(ref mut submatches) = submatches {
-                                submatches.push(SubMatch {
+                            let count =
+                                counts.get(pattern).unwrap().fetch_add(1, Ordering::Relaxed);
+
+                            if let Some(locations_limit) = opt.locations_limit {
+                                if count >= locations_limit {
+                                    collect_matches = false;
+                                }
+                            }
+
+                            if collect_matches {
+                                submatches.as_mut().unwrap().push(SubMatch {
                                     start_col: m.start(),
                                     end_col: m.end(),
                                 });
