@@ -172,13 +172,28 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
                   -> Result<()> {
                 if let Some(text) = data.text {
                     for (pattern, regex) in &patterns {
+                        let mut submatches: Option<Vec<SubMatch>> = None;
+                        if let Some(_) = local_match_locations {
+                            submatches = Some(Vec::new());
+                        }
+
                         for m in regex.find_iter(&text) {
                             counts.get(pattern).unwrap().fetch_add(1, Ordering::Relaxed);
-                            if let Some(ref mut locations) = local_match_locations {
-                                let match_location = MatchLocation {
-                                    line: line_num,
+                            if let Some(ref mut submatches) = submatches {
+                                submatches.push(SubMatch {
                                     start_col: m.start(),
                                     end_col: m.end(),
+                                });
+                            }
+                        }
+
+                        if let Some(submatches) = submatches {
+                            if !submatches.is_empty() {
+                                let locations = local_match_locations.as_mut().unwrap();
+                                let match_location = MatchLocation {
+                                    text: text.clone(),
+                                    line_num,
+                                    submatches,
                                 };
                                 locations.get_mut(pattern).unwrap().push(match_location);
                             }
@@ -218,12 +233,20 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
         let count = count.load(Ordering::Relaxed);
         let matches_for_pattern = match_locations.as_ref().map(|m| m.get(pattern).unwrap());
 
-        let json_out = &json!({
-            "pattern": pattern,
-            "count": count,
-            "matches": matches_for_pattern,
-        })
-        .to_string();
+        let json_out = if let Some(matches_for_pattern) = matches_for_pattern {
+            json!({
+                "pattern": pattern,
+                "count": count,
+                "matches": matches_for_pattern,
+            })
+            .to_string()
+        } else {
+            json!({
+                "pattern": pattern,
+                "count": count,
+            })
+            .to_string()
+        };
 
         if opt.json {
             println!("{json_out}");
@@ -240,11 +263,13 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
                     if locs.is_empty() {
                         continue;
                     }
-                    println!("  {}", style(path.to_string_lossy()).blue());
                     for loc in locs.iter() {
                         println!(
-                            "    → line={}, start_col={}, end_col={}",
-                            loc.line, loc.start_col, loc.end_col
+                            " → [{}, line {}, {} matches] {:?}",
+                            path.to_string_lossy(),
+                            loc.line_num,
+                            loc.submatches.len(),
+                            loc.text,
                         );
                     }
                 }
@@ -276,8 +301,14 @@ fn get_output_file(opt: &Opt) -> Result<Option<(File, PathBuf)>> {
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct MatchLocation {
-    line: usize,
+struct SubMatch {
     start_col: usize,
     end_col: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct MatchLocation {
+    text: String,
+    line_num: usize,
+    submatches: Vec<SubMatch>,
 }
