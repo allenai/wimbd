@@ -3,12 +3,15 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::Arc;
+use std::time::Duration;
 
 use ahash::RandomState;
 use anyhow::{bail, Result};
 use console::style;
 use regex::Regex;
+use serde::Serialize;
 use serde_json::json;
 use structopt::StructOpt;
 
@@ -24,6 +27,14 @@ pub(crate) struct Opt {
     /// Pattern to search for. See https://docs.rs/regex/latest/regex/#syntax for the supported syntax.
     #[structopt(short = "p", long = "pattern", number_of_values = 1)]
     pattern: Vec<String>,
+
+    /// Include the exact location of each match in the output.
+    #[structopt(long = "--with-locations")]
+    with_locations: bool,
+
+    /// Limit the number of match locations collected by pattern. Only relevant when using '--with-locations'.
+    #[structopt(long = "--locations-limit")]
+    locations_limit: Option<usize>,
 
     /// Limit the number of JSON lines per file to process.
     #[structopt(short = "l", long = "limit")]
@@ -58,6 +69,8 @@ pub(crate) struct Opt {
     force: bool,
 }
 
+type MatchLocationsPerPath = HashMap<PathBuf, Vec<MatchLocation>, RandomState>;
+
 pub(crate) fn main(mut opt: Opt) -> Result<()> {
     opt.path = expand_dirs(&opt.path)?;
 
@@ -73,14 +86,36 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
     if opt.path.is_empty() {
         bail!("at least one path is required");
     }
+    if opt.locations_limit.is_some() && !opt.with_locations {
+        bail!("--locations-limit is only valid when using --with-locations");
+    }
 
     let mut counts: HashMap<String, Arc<AtomicUsize>, RandomState> =
         HashMap::with_capacity_and_hasher(opt.pattern.len(), RandomState::new());
     let mut patterns: HashMap<String, Regex, RandomState> =
         HashMap::with_capacity_and_hasher(opt.pattern.len(), RandomState::new());
+    let mut match_locations: Option<HashMap<String, MatchLocationsPerPath, RandomState>> = None;
+    let mut tx: Option<SyncSender<(String, PathBuf, Vec<MatchLocation>)>> = None;
+    let mut rx: Option<Receiver<(String, PathBuf, Vec<MatchLocation>)>> = None;
+    if opt.with_locations {
+        let (tx_, rx_) = sync_channel::<(String, PathBuf, Vec<MatchLocation>)>(512_000);
+        tx = Some(tx_);
+        rx = Some(rx_);
+        match_locations = Some(HashMap::with_capacity_and_hasher(
+            opt.pattern.len(),
+            RandomState::new(),
+        ));
+    }
+
     for pattern in &opt.pattern {
         counts.insert(pattern.to_string(), Arc::new(AtomicUsize::new(0)));
         patterns.insert(pattern.to_string(), Regex::new(pattern)?);
+        if let Some(ref mut locations) = match_locations {
+            locations.insert(
+                pattern.to_string(),
+                HashMap::with_hasher(RandomState::new()),
+            );
+        }
     }
 
     let (mut out_file, out_path) = match get_output_file(&opt)? {
@@ -93,31 +128,141 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
     for path in &opt.path {
         let counts = counts.clone();
         let patterns = patterns.clone();
-        executor.execute(
+
+        let sync_match_locations = {
+            let tx = tx.clone();
+            let path = path.clone();
+            move |local_match_locations: Option<
+                HashMap<String, Vec<MatchLocation>, RandomState>,
+            >|
+                  -> Result<()> {
+                if let Some(mut local_match_locations) = local_match_locations {
+                    let tx = tx.as_ref().unwrap();
+                    for (pattern, matches) in local_match_locations.drain() {
+                        tx.send((pattern, path.clone(), matches))?;
+                    }
+                }
+                Ok(())
+            }
+        };
+
+        let local_match_locations_factory = {
+            let opt = opt.clone();
+            move || -> Result<Option<HashMap<String, Vec<MatchLocation>, RandomState>>> {
+                let mut local_match_locations: Option<
+                    HashMap<String, Vec<MatchLocation>, RandomState>,
+                > = None;
+                if opt.with_locations {
+                    local_match_locations = Some(HashMap::with_capacity_and_hasher(
+                        opt.pattern.len(),
+                        RandomState::new(),
+                    ));
+                    for pattern in &opt.pattern {
+                        local_match_locations
+                            .as_mut()
+                            .unwrap()
+                            .insert(pattern.into(), Vec::new());
+                    }
+                }
+                Ok(local_match_locations)
+            }
+        };
+
+        executor.execute_with_callback(
             path,
-            move |data: DataInstance, _: &Path, _: usize| -> Result<()> {
+            move |data: DataInstance,
+                  _: &Path,
+                  line_num: usize,
+                  local_match_locations: &mut Option<
+                HashMap<String, Vec<MatchLocation>, RandomState>,
+            >|
+                  -> Result<()> {
                 if let Some(text) = data.text {
                     for (pattern, regex) in &patterns {
-                        for _ in regex.find_iter(&text) {
-                            counts.get(pattern).unwrap().fetch_add(1, Ordering::Relaxed);
+                        let mut collect_matches = local_match_locations.is_some();
+                        let mut submatches: Option<Vec<SubMatch>> = None;
+                        if collect_matches {
+                            submatches = Some(Vec::new());
+                        }
+
+                        for m in regex.find_iter(&text) {
+                            let count =
+                                counts.get(pattern).unwrap().fetch_add(1, Ordering::Relaxed);
+
+                            if let Some(locations_limit) = opt.locations_limit {
+                                if count >= locations_limit {
+                                    collect_matches = false;
+                                }
+                            }
+
+                            if collect_matches {
+                                submatches.as_mut().unwrap().push(SubMatch {
+                                    start_col: m.start(),
+                                    end_col: m.end(),
+                                });
+                            }
+                        }
+
+                        if let Some(submatches) = submatches {
+                            if !submatches.is_empty() {
+                                let locations = local_match_locations.as_mut().unwrap();
+                                let match_location = MatchLocation {
+                                    text: text.clone(),
+                                    line_num,
+                                    submatches,
+                                };
+                                locations.get_mut(pattern).unwrap().push(match_location);
+                            }
                         }
                     }
                 };
                 Ok(())
             },
+            local_match_locations_factory,
+            sync_match_locations,
         )?;
+    }
+
+    drop(tx);
+
+    while !executor.done() {
+        if let Some(ref rx) = rx {
+            while let Ok((pattern, path, matches)) = rx.recv_timeout(Duration::from_secs(1)) {
+                let matches_for_pattern: &mut HashMap<
+                    PathBuf,
+                    Vec<MatchLocation>,
+                    ahash::RandomState,
+                > = match_locations
+                    .as_mut()
+                    .map(|m| m.get_mut(&pattern).unwrap())
+                    .unwrap();
+                if !matches.is_empty() {
+                    matches_for_pattern.insert(path.clone(), matches);
+                }
+            }
+        }
     }
 
     executor.join()?;
 
     for (i, (pattern, count)) in counts.iter().enumerate() {
         let count = count.load(Ordering::Relaxed);
+        let matches_for_pattern = match_locations.as_ref().map(|m| m.get(pattern).unwrap());
 
-        let json_out = &json!({
-            "pattern": pattern,
-            "count": count,
-        })
-        .to_string();
+        let json_out = if let Some(matches_for_pattern) = matches_for_pattern {
+            json!({
+                "pattern": pattern,
+                "count": count,
+                "matches": matches_for_pattern,
+            })
+            .to_string()
+        } else {
+            json!({
+                "pattern": pattern,
+                "count": count,
+            })
+            .to_string()
+        };
 
         if opt.json {
             println!("{json_out}");
@@ -129,6 +274,22 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
                 style(pattern).cyan(),
                 count
             );
+            if let Some(locations) = matches_for_pattern {
+                for (path, locs) in locations.iter() {
+                    if locs.is_empty() {
+                        continue;
+                    }
+                    for loc in locs.iter() {
+                        println!(
+                            " → [{}, line {}, {} matches] {:?}",
+                            path.to_string_lossy(),
+                            loc.line_num,
+                            loc.submatches.len(),
+                            loc.text,
+                        );
+                    }
+                }
+            }
         }
 
         if let Some(ref mut file) = out_file {
@@ -153,4 +314,17 @@ fn get_output_file(opt: &Opt) -> Result<Option<(File, PathBuf)>> {
     } else {
         Ok(None)
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct SubMatch {
+    start_col: usize,
+    end_col: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct MatchLocation {
+    text: String,
+    line_num: usize,
+    submatches: Vec<SubMatch>,
 }
