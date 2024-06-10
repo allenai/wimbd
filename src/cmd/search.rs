@@ -65,6 +65,8 @@ pub(crate) struct Opt {
     force: bool,
 }
 
+type MatchLocationsPerPath = HashMap<PathBuf, Vec<MatchLocation>, RandomState>;
+
 pub(crate) fn main(mut opt: Opt) -> Result<()> {
     opt.path = expand_dirs(&opt.path)?;
 
@@ -85,9 +87,7 @@ pub(crate) fn main(mut opt: Opt) -> Result<()> {
         HashMap::with_capacity_and_hasher(opt.pattern.len(), RandomState::new());
     let mut patterns: HashMap<String, Regex, RandomState> =
         HashMap::with_capacity_and_hasher(opt.pattern.len(), RandomState::new());
-    let mut match_locations: Option<
-        HashMap<String, HashMap<PathBuf, Vec<MatchLocation>, RandomState>, RandomState>,
-    > = None;
+    let mut match_locations: Option<HashMap<String, MatchLocationsPerPath, RandomState>> = None;
     let mut tx: Option<SyncSender<(String, PathBuf, Vec<MatchLocation>)>> = None;
     let mut rx: Option<Receiver<(String, PathBuf, Vec<MatchLocation>)>> = None;
     if opt.with_locations {
