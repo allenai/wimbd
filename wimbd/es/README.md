@@ -33,8 +33,7 @@ However, you can find the names of the relevant indices below.
 At the moment, this will return the following indices:
 ```Python
 {'re_pile': {'docs.count': '211036967'},
- 'laion2b-multi-2': {'docs.count': '1133101637'},
- 'laion2b-multi-1': {'docs.count': '1133101297'},
+ 're_laion2b_multi': {'docs.count': '2248498161'}
  'openwebtext': {'docs.count': '8013769'},
  're_laion2b-en-1': {'docs.count': '1161075864'},
  're_laion2b-en-2': {'docs.count': '1161076588'},
