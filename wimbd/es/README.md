@@ -39,7 +39,7 @@ At the moment, this will return the following indices:
  're_laion2b-en-1': {'docs.count': '1161075864'},
  're_laion2b-en-2': {'docs.count': '1161076588'},
  'c4': {'docs.count': '1074273501'},
- 'laion1b-nolang': {'docs.count': '1271703630'},
+ 're_laion2b_nolang': {'docs.count': '1271703630'},
  're_oscar': {'docs.count': '431992659'}}
 ```
 
