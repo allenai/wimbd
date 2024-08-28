@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from functools import cache
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Optional, Union
@@ -80,6 +81,7 @@ def _query_documents_contain_phrases(
     all_phrases: bool = False,
     do_score: bool = False,
     is_regexp: bool = False,
+    slop: int = 0,
 ) -> Dict:
     if isinstance(phrases, str):
         phrases = [phrases]
@@ -108,7 +110,7 @@ def _query_documents_contain_phrases(
     else:
         match_query = []
         for phrase in phrases:
-            match_query.append({"match_phrase": {"text": phrase}})
+            match_query.append({"match_phrase": {"text": {"query": phrase, "slop": slop}}})
 
     query = {
         "bool": {which_bool: match_query, "minimum_should_match": minimum_should_match}
@@ -121,6 +123,7 @@ def count_documents_containing_phrases(
     phrases: Union[str, List[str]],
     all_phrases: bool = False,
     is_regexp: bool = False,
+    slop: int = 0,
     subset_filter: Optional[List[Dict[str, Any]]] = None,
     es: Optional[Elasticsearch] = None,
 ) -> int:
@@ -134,6 +137,10 @@ def count_documents_containing_phrases(
         expressions are not supported by ElasticSearch, so if you want to do an exact match for
         spans longer than a single term, set this to False. In most cases, using exp1|exp2 is better
         than specifying [exp1, exp2] as two different `phrases`.
+    :param slop: The number of positions allowed between matching phrases. Each phrase is allowed to 
+        match a string where there are `slop` positions between the terms.
+        For instance, "I like" qeury with a slop=1 will match both strings that literally contain "I like"
+        but also "I really like" and "I would like", etc.
     :return: The number of documents matching the conditions.
 
     Examples:
@@ -148,7 +155,7 @@ def count_documents_containing_phrases(
     """
     es = es or es_init()
 
-    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp)
+    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp, slop=slop)
 
     if index == "c4":
         if not subset_filter:
@@ -173,6 +180,7 @@ def get_documents_containing_phrases(
     all_phrases: bool = False,
     num_documents: int = 10,
     is_regexp: bool = False,
+    slop: int = 0,
     return_all_hits: bool = False,
     sort_field: str = "date",
     subset_filter: Optional[Dict[str, Any]] = None,
@@ -205,7 +213,7 @@ def get_documents_containing_phrases(
     """
     es = es or es_init()
 
-    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp)
+    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp, slop=slop)
     if index == "c4":
         if not subset_filter:
             subset_filter = [{"subset": "en"}]
