@@ -10,6 +10,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 PROJECT_ROOT = (Path(__file__).parent / ".." / "..").resolve()
 DEFAULT_CONFIG_LOCATION = PROJECT_ROOT / "es_config.yml"
@@ -23,6 +24,9 @@ def es_init(config: Path = DEFAULT_CONFIG_LOCATION, timeout: int = 30) -> Elasti
     """
     with open(config) as file_ref:
         config = yaml.safe_load(file_ref)
+    
+    if config == DEFAULT_CONFIG_LOCATION:
+        logger.warning("Using default config file. This will unlikely work unless you're the creator of this library. Please make sure to specify the ES config file and provide it to the function you are using.")
 
     cloud_id = config["cloud_id"]
     api_key = config.get("api_key", os.getenv("ES_API_KEY", None))
