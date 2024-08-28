@@ -81,6 +81,7 @@ def _query_documents_contain_phrases(
     all_phrases: bool = False,
     do_score: bool = False,
     is_regexp: bool = False,
+    slop: int = 0,
 ) -> Dict:
     if isinstance(phrases, str):
         phrases = [phrases]
@@ -109,7 +110,7 @@ def _query_documents_contain_phrases(
     else:
         match_query = []
         for phrase in phrases:
-            match_query.append({"match_phrase": {"text": phrase}})
+            match_query.append({"match_phrase": {"text": {"query": phrase, "slop": slop}}})
 
     query = {
         "bool": {which_bool: match_query, "minimum_should_match": minimum_should_match}
@@ -122,6 +123,7 @@ def count_documents_containing_phrases(
     phrases: Union[str, List[str]],
     all_phrases: bool = False,
     is_regexp: bool = False,
+    slop: int = 0,
     subset_filter: Optional[List[Dict[str, Any]]] = None,
     es: Optional[Elasticsearch] = None,
 ) -> int:
@@ -135,6 +137,10 @@ def count_documents_containing_phrases(
         expressions are not supported by ElasticSearch, so if you want to do an exact match for
         spans longer than a single term, set this to False. In most cases, using exp1|exp2 is better
         than specifying [exp1, exp2] as two different `phrases`.
+    :param slop: The number of positions allowed between matching phrases. Each phrase is allowed to 
+        match a string where there are `slop` positions between the terms.
+        For instance, "I like" qeury with a slop=1 will match both strings that literally contain "I like"
+        but also "I really like" and "I would like", etc.
     :return: The number of documents matching the conditions.
 
     Examples:
@@ -149,7 +155,7 @@ def count_documents_containing_phrases(
     """
     es = es or es_init()
 
-    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp)
+    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp, slop=slop)
 
     if index == "c4":
         if not subset_filter:
@@ -174,6 +180,7 @@ def get_documents_containing_phrases(
     all_phrases: bool = False,
     num_documents: int = 10,
     is_regexp: bool = False,
+    slop: int = 0,
     return_all_hits: bool = False,
     sort_field: str = "date",
     subset_filter: Optional[Dict[str, Any]] = None,
@@ -206,7 +213,7 @@ def get_documents_containing_phrases(
     """
     es = es or es_init()
 
-    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp)
+    query = _query_documents_contain_phrases(phrases, all_phrases, is_regexp=is_regexp, slop=slop)
     if index == "c4":
         if not subset_filter:
             subset_filter = [{"subset": "en"}]
@@ -407,160 +414,3 @@ def count_total_occurrences_of_unigrams(
         )
         term_freq_dict[term] = total_freq
     return term_freq_dict
-
-
-def _query_documents_contain_phrase_with_slop(phrases: str, 
-                                              slop: int, 
-                                              all_phrases: bool = False,
-                                              do_score: bool = False,
-                                              ) -> Dict:
-    matched_query = []
-    if all_phrases:
-        which_bool = "must" if do_score else "filter"
-        minimum_should_match = None
-    else:
-        which_bool = "should"
-        minimum_should_match = 1
-        
-    for phrase in phrases:
-        query = {"match_phrase": {"text": {"query": phrase, "slop": slop}}}
-        matched_query.append(query)
-    
-    query = {
-        "bool": {which_bool: matched_query, "minimum_should_match": minimum_should_match}
-    }
-    return query
-
-
-def get_documents_containing_phrase_with_slop(
-    index: str,
-    phrases: Union[str, List[str]],
-    all_phrases: bool = False,
-    slop: int = 5,
-    num_documents: int = 10,
-    return_all_hits: bool = False,
-    sort_field: str = "date",
-    subset_filter: Optional[Dict[str, Any]] = None,
-    es: Optional[Elasticsearch] = None,
-) -> Generator[Dict, None, None]:
-    """
-    
-    """
-    es = es or es_init()
-
-    if isinstance(phrases, str):
-        phrases = [phrases]
-    query = _query_documents_contain_phrase_with_slop(phrases, slop, all_phrases)
-
-    if subset_filter:
-        if "filter" not in query["bool"]:
-            query["bool"]["filter"] = []
-        for filter_ in subset_filter:
-            query["bool"]["filter"].append({"term": filter_})
-
-    if return_all_hits:
-        sort = [{sort_field: "asc"}]
-        pit = es.open_point_in_time(index=index, keep_alive="1m")
-        results = es.search(index=index, query=query, size=num_documents, sort=sort)[
-            "hits"
-        ]["hits"]
-        yield from results
-        while len(results) > 0:
-            results = es.search(
-                index=index,
-                query=query,
-                size=num_documents,
-                sort=sort,
-                search_after=results[-1]["sort"],
-            )["hits"]["hits"]
-            yield from results
-        try:
-            es.close_point_in_time(id=pit["id"])
-        except NotFoundError:
-            pass
-    else:
-        yield from es.search(index=index, query=query, size=num_documents)["hits"][
-            "hits"
-        ]
-
-
-def count_documents_with_regex_slop(
-    index: str,
-    phrases: Union[str, Iterable[str]],
-    all_phrases: bool = False,
-    slop: int = 0,
-    subset_filter: Optional[Dict[str, Any]] = None,
-    exact_phrases: Optional[Union[str, Iterable[str]]] = None,
-    es: Optional[Elasticsearch] = None,
-) -> Dict[str, int]:
-    """
-    Count the number of documents matching each string with a specified slop.
-
-    :param index: Name of the index
-    :param phrases: A single string or a list of strings to be matched in the `text` field.
-    :param all_phrases: Whether the document should contain all phrases (AND clause) or any
-        of the phrases (OR clause).
-    :param slop: The number of words allowed between the tokens in the string.
-    :param exact_phrases: Phrases to be matched exactly without any slop.
-    :param subset_filter: Additional filters to apply to the search.
-    :param es: Elasticsearch client instance. If not provided, a new one will be initialized.
-    :return: The number of documents matching the conditions.
-
-    Examples:
-
-        count_documents_with_regex_slop("test-index", "legal based", slop=5)
-        count_documents_with_regex_slop("test-index", ["legal based", "licenses"], slop=3)
-
-    """
-    if isinstance(phrases, str):
-        phrases = [phrases]
-
-    if exact_phrases:
-        if isinstance(exact_phrases, str):
-            exact_phrases = [exact_phrases]
-
-    es = es or es_init()
-
-    if all_phrases:
-        which_bool = "filter"
-        minimum_should_match = None
-    else:
-        which_bool = "should"
-        minimum_should_match = 1
-
-    if index == "c4":
-        if not subset_filter:
-            subset_filter = [{"subset": "en"}]
-        else:
-            subset_filter.append({"subset": "en"})
-
-    match_query = []
-
-    # Query construction with slop
-    for pattern in phrases:
-        query = {"match_phrase": {"text": {"query": pattern, "slop": slop}}}
-        match_query.append(query)
-
-    # Query construction for exact phrases
-    if exact_phrases:
-        for pattern in exact_phrases:
-            query = {
-                "match_phrase": {
-                    "text": {"query": pattern, "slop": 0}  # No slop for exact phrases
-                }
-            }
-            match_query.append(query)
-
-    query = {
-        "bool": {which_bool: match_query, "minimum_should_match": minimum_should_match}
-    }
-
-    if subset_filter:
-        if "filter" not in query["bool"]:
-            query["bool"]["filter"] = []
-        for filter_ in subset_filter:
-            query["bool"]["filter"].append({"term": filter_})
-
-    count = es.count(index=index, query=query)["count"]
-
-    return count
