@@ -12,7 +12,7 @@ setup(
     packages=find_packages(include=['wimbd.es']),  # Automatically find packages in the directory # include=['wimbd', 'wimbd.es']
     classifiers=[
         'Programming Language :: Python :: 3',
-        'License :: OSI Approved :: Apache License',
+        'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
     ],
     python_requires='>=3.9',
