@@ -2,6 +2,14 @@
 
 [Paper](http://arxiv.org/abs/2310.20707) || [Demo](https://wimbd.apps.allenai.org) || [Artifacts](https://console.cloud.google.com/storage/browser/wimbd)
 
+## News
+- August 2024: added the [Tulu2 dataset](https://huggingface.co/datasets/allenai/tulu-v2-sft-mixture) to our index
+- August 2024: added functionality to the es search that allows flexible queries in between text terms
+- August 2024: pypi package release of the elasticsearch wrapper. Install by running `pip install wimbd`
+- April 2024: WIMBD was accepted to ICLR!
+- October 2023: first release
+
+
 This repository contains the code for running What's In My Big Data (WIMBD), which accompanies our [recent paper](http://arxiv.org/abs/2310.20707) (with the same name).
 
 ![WIMBD overview](./resources/viz/wimbd-fig1.png)
@@ -98,8 +106,22 @@ wimbd topk \
 
 ## Search
 
+We provide a wrapper to the elasticsearch api library, and provide customized functions that better serve the kinds of functionality we are interested in this line of work.
+
 Due to the nature of ElasticSearch, we cannot release the API keys on the web.
-If you are interested in using our ElasticSearch indices, please fill up this [form](https://forms.gle/Mk9uwJibR9H4hh9Y9), and we'll get back to you as soon as we can.
+However, there is simple form that you can fill up and we can provide access to certain corpora.
+If you are interested in using our ElasticSearch indices, please fill up this [form](https://forms.gle/Mk9uwJibR9H4hh9Y9), and we'll get back to you with the keys as soon as we can.
+
+The code of our wrapper can be found [here](wimbd/es/).
+
+It can also be used through our wimbd package!
+
+```sh
+pip install wimbd
+```
+
+
+Missing a functionality? open an issue, or a PR, and we could add it to the library.
 
 ## Issues
 
