@@ -17,13 +17,19 @@ DEFAULT_CONFIG_LOCATION = PROJECT_ROOT / "es_config.yml"
 
 
 @cache
-def es_init(config: Path = DEFAULT_CONFIG_LOCATION, timeout: int = 30) -> Elasticsearch:
+def es_init(config: Path = DEFAULT_CONFIG_LOCATION, cloud_id: str = None, api_key: str=None, timeout: int = 30) -> Elasticsearch:
     """
     :param config: Path to the config yaml file, containing `cloud_id` and `api_key` fields.
     :return: Authenticated ElasticSearch client.
     """
-    with open(config) as file_ref:
-        config = yaml.safe_load(file_ref)
+    if config:
+        with open(config) as file_ref:
+            config = yaml.safe_load(file_ref)
+    else:
+        config = {
+            "cloud_id": cloud_id,
+            "api_key": api_key
+        }
     
     if config == DEFAULT_CONFIG_LOCATION:
         logger.warning("Using default config file. This will unlikely work unless you're the creator of this library. Please make sure to specify the ES config file and provide it to the function you are using.")
