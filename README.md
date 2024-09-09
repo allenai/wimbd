@@ -3,6 +3,7 @@
 [Paper](http://arxiv.org/abs/2310.20707) || [Demo](https://wimbd.apps.allenai.org) || [Artifacts](https://console.cloud.google.com/storage/browser/wimbd)
 
 ## News
+- September 2024: added a bunch of fine-tuning datasets. Full list [here](wimbd/es/README.md)
 - August 2024: added the [Dolma v1.7 dataset](https://huggingface.co/datasets/allenai/dolma) to our index
 - August 2024: added the [Tulu2 dataset](https://huggingface.co/datasets/allenai/tulu-v2-sft-mixture) to our index
 - August 2024: added functionality to the es search that allows flexible queries in between text terms
