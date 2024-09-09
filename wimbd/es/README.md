@@ -81,6 +81,8 @@ Index 1:
 | SlimOrca                          | slimorca                          | https://huggingface.co/datasets/Open-Orca/SlimOrca                          |
 | Open Assistant                    | openassistant-guanaco             | https://huggingface.co/datasets/timdettmers/openassistant-guanaco           |
 | WizardLM_evol_instruct_V2_196k    | wizardlm_evol_instruct_v2_196k    | https://huggingface.co/datasets/WizardLMTeam/WizardLM_evol_instruct_V2_196k |
+| NuminaMath-CoT                    | numina-math-cot                   | https://huggingface.co/datasets/AI-MO/NuminaMath-CoT                        |
+| lmsys-chat-1m                     | lmsys-chat-1m                     | https://huggingface.co/datasets/lmsys/lmsys-chat-1m                         |
 
 
 
