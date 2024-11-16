@@ -30,7 +30,7 @@ WIMBD is composed of two components
 
 The count follows a map-reduce functionality, which divides the task into smaller chunks, applies the operation (e.g., extract the domain from a URL) and then aggregates the counts.
 We have two implementations for this. One through python functions (e.g., for [domain counts](wimbd/url_counts/)) which is easily extendable and scalable,
-and one through a Rust CLI for faster processing. The [Rust implementation](wimbd/src/) covers the summary statistics (presented in Table 2 in the paper) such as the corpus size, number of tokens, etc. In addition, it computes the most & least common $n$-grams approximation using counting Bloom filters.
+and one through a Rust CLI for faster processing. The [Rust implementation](src/) covers the summary statistics (presented in Table 2 in the paper) such as the corpus size, number of tokens, etc. In addition, it computes the most & least common $n$-grams approximation using counting Bloom filters.
 
 In practice, we implement search using [elasticsearch](https://www.elastic.co/). We index 5 of the corpora we consider, and provide both a UI and a programmatic access to those.
 We built some wrappers around the ES API, which allows `count` and `extract` functionalities. We provide a more detailed documentation [here](./wimbd/es/README.md).
